@@ -423,14 +423,17 @@ def crear_carpetas():
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 
+```python
+crear_carpetas()
+with app.app_context():
+    db.create_all()
+    if User.query.count() == 0:
+        print("\n" + "=" * 60)
+        print("  No hay usuarios en la base de datos.")
+        print("  Regístrate en http://127.0.0.1:5000/register")
+        print("  El primer usuario creado será el CREADOR del sistema.")
+        print("=" * 60 + "\n")
+
+
 if __name__ == '__main__':
-    crear_carpetas()
-    with app.app_context():
-        db.create_all()
-        if User.query.count() == 0:
-            print("\n" + "=" * 60)
-            print("  No hay usuarios en la base de datos.")
-            print("  Regístrate en http://127.0.0.1:5000/register")
-            print("  El primer usuario creado será el CREADOR del sistema.")
-            print("=" * 60 + "\n")
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
