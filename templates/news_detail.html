@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ super() }} - {{ noticia.title }}{% endblock %}
+
+{% block content %}
+<div class="news-detail">
+    {% if noticia.image_url %}
+        <img src="{{ url_for('uploaded_file', filename=noticia.image_url) }}" alt="Imagen de la noticia">
+    {% endif %}
+
+    <h1>{{ noticia.title }}</h1>
+
+    <div class="meta">
+        <span><strong>Autor:</strong> {{ noticia.author.username }}</span>
+        <span><strong>Fecha:</strong> {{ noticia.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+        {% if noticia.veracity_level %}
+            <span class="veracidad-badge veracidad-{{ noticia.veracity_level }}">
+                Veracidad: {{ noticia.veracity_level|upper }}
+            </span>
+        {% endif %}
+    </div>
+
+    <div class="content">{{ noticia.content }}</div>
+
+    {% if noticia.veracity_note %}
+        <div style="background: #1e293b; border-left: 4px solid var(--primary); padding: 1rem; margin: 1.5rem 0; border-radius: 0 8px 8px 0;">
+            <strong style="color: var(--primary);">Nota de verificación:</strong> {{ noticia.veracity_note }}
+        </div>
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.is_calibrador() and not noticia.veracity_level %}
+        <form method="POST" action="{{ url_for('verify_news', news_id=noticia.id) }}">
+            <h3 style="margin-bottom: 1rem;">Calificar veracidad</h3>
+            <div class="form-group">
+                <label>Nivel de veracidad</label>
+                <select name="veracity_level" required>
+                    <option value="">Seleccionar...</option>
+                    <option value="alta">Alta</option>
+                    <option value="media">Media</option>
+                    <option value="baja">Baja</option>
+                    <option value="falsa">Falsa</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nota / justificación (opcional)</label>
+                <textarea name="veracity_note" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar calificación</button>
+        </form>
+    {% endif %}
+
+    <a href="{{ url_for('index') }}" style="color: var(--primary);">← Volver al inicio</a>
+</div>
+{% endblock %}

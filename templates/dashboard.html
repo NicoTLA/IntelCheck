@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}{{ super() }} - Panel de Usuario{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
+    <div>
+        <h2>Tu panel, {{ current_user.username }}</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Rol: <strong>{{ current_user.role }}</strong> | Puedes ver noticias y solicitar verificación de información.</p>
+
+        <a href="{{ url_for('request_verification') }}" class="btn btn-primary">+ Nueva solicitud de verificación</a>
+    </div>
+
+    <div class="table-card">
+        <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text);">Tus solicitudes</h3>
+        {% if solicitudes %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Título</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                        <th>Respuesta del experto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in solicitudes %}
+                        <tr>
+                            <td>{{ s.title }}</td>
+                            <td><span class="status-badge status-{{ s.status }}">{{ s.status|upper }}</span></td>
+                            <td>{{ s.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>{{ s.admin_response or '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <p>No tienes solicitudes de verificación aún.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

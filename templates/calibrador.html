@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ super() }} - Calibrador{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 2rem;">Panel de Calificador</h2>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
+    <div class="table-card">
+        <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text;">Noticias por verificar</h3>
+        {% if noticias %}
+            <table style="font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th>Título</th>
+                        <th>Autor</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for n in noticias %}
+                    <tr>
+                        <td>{{ n.title }}</td>
+                        <td>{{ n.author.username }}</td>
+                        <td>
+                            <a href="{{ url_for('news_detail', news_id=n.id) }}" class="btn btn-sm btn-primary">Calificar</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <p>No hay noticias pendientes de calificación.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="table-card">
+        <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text;">Solicitudes de usuarios pendientes</h3>
+        {% if solicitudes %}
+            <table style="font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th>Título</th>
+                        <th>Solicitante</th>
+                        <th>Fecha</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in solicitudes %}
+                    <tr>
+                        <td>{{ s.title }}</td>
+                        <td>{{ s.requester.username }}</td>
+                        <td>{{ s.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>
+                            <a href="{{ url_for('request_review_page', req_id=s.id) }}" class="btn btn-sm btn-outline">Revisar y decidir</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <p>No hay solicitudes pendientes.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

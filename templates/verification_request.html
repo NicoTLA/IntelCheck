@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}{{ super() }} - Solicitar verificación{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h2 style="margin-bottom: 1.5rem; color: var(--text);">Solicitar verificación de noticia o información</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="title">Título / Asunto</label>
+            <input type="text" id="title" name="title" required placeholder="Ej: ¿Es verdadera esta afirmación sobre...?">
+        </div>
+        <div class="form-group">
+            <label for="content">Contenido o artículo a verificar</label>
+            <textarea id="content" name="content" rows="8" required placeholder="Pega aquí el texto o artículo que deseas verificar..."></textarea>
+        </div>
+        <div class="form-group">
+            <label for="image">Imagen relacionada (opcional)</label>
+            <input type="file" id="image" name="image" class="file-input" accept="image/*">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Enviar solicitud</button>
+    </form>
+
+    <p style="margin-top: 1.5rem; text-align: center; font-size: 0.9rem; color: var(--text-muted);">
+        Un experto (calificador o creador) revisará tu solicitud y decidirá si la califica o no.
+    </p>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}{{ super() }} - Inicio{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>IntelCheck <span>(Nullscape)</span></h1>
+    <p>Plataforma de verificación noticiosa e informativa. Evalúa la veracidad de las noticias publicadas por usuarios autorizados.</p>
+
+    {% if not current_user.is_authenticated %}
+        <a href="{{ url_for('login') }}" class="btn btn-primary">Iniciar sesión</a>
+        <a href="{{ url_for('register') }}" class="btn btn-outline">Crear cuenta</a>
+    {% else %}
+        {% if current_user.is_calibrador() %}
+            <a href="{{ url_for('create_news') }}" class="btn btn-primary">Publicar noticia</a>
+        {% endif %}
+        <a href="{{ url_for('request_verification') }}" class="btn btn-outline">Solicitar verificación</a>
+    {% endif %}
+</section>
+
+<section>
+    <div class="feed-header">
+        <h2>Noticias recientes</h2>
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('request_verification') }}" class="btn btn-sm btn-outline">+ Solicitar verificación</a>
+        {% endif %}
+    </div>
+
+    {% if noticias %}
+        <div class="news-grid">
+            {% for noticia in noticias %}
+                <div class="news-card">
+                    {% if noticia.image_url %}
+                        <img src="{{ url_for('uploaded_file', filename=noticia.image_url) }}" alt="Imagen noticia">
+                    {% endif %}
+                    <div class="news-card-body">
+                        <h3>{{ noticia.title }}</h3>
+                        <p>{{ noticia.content[:200] }}{% if noticia.content|length > 200 %}...{% endif %}</p>
+                        <div style="margin-top: auto; font-size: 0.8rem; color: var(--text-muted);">
+                            Por <strong>{{ noticia.author.username }}</strong> · 
+                            {{ noticia.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        </div>
+                    </div>
+                    <div class="news-card-footer">
+                        <span class="veracidad-badge veracidad-{% if noticia.veracity_level %}{{ noticia.veracity_level }}{% else %}pendiente{% endif %}">
+                            {{ noticia.veracity_level|upper if noticia.veracity_level else 'Pendiente' }}
+                        </span>
+                        <a href="{{ url_for('news_detail', news_id=noticia.id) }}" style="color: var(--primary); font-size: 0.85rem; text-decoration: none;">Ver detalle →</a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <p>No hay noticias publicadas aún.</p>
+            {% if current_user.is_authenticated and current_user.is_calibrador() %}
+                <p>Sé el primero en publicar una noticia.</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

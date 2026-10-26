@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}{{ super() }} - Asistente IA{% endblock %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 0 auto;">
+    <h2 style="margin-bottom: 1rem;">Asistente IA de IntelCheck</h2>
+    <p style="color: var(--text-muted); margin-bottom: 2rem;">Pregúntame sobre cómo funciona la plataforma, los niveles de veracidad o cómo enviar solicitudes.</p>
+
+    <div class="chat-container">
+        <div class="chat-messages">
+            {% if historial %}
+                {% for msg in historial %}
+                    <div class="chat-message user">
+                        <div class="sender">Tú</div>
+                        {{ msg.usuario }}
+                    </div>
+                    <div class="chat-message ia">
+                        <div class="sender">IntelCheck IA</div>
+                        {{ msg.ia }}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <p>No hay conversación aún. Escribe tu primer mensaje.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <form method="POST" class="chat-input">
+            <input type="text" name="mensaje" placeholder="Escribe tu pregunta..." autocomplete="off" required>
+            <button type="submit">Enviar</button>
+        </form>
+    </div>
+
+    <form method="POST" action="{{ url_for('ai_clear') }}" style="margin-top: 1rem; text-align: center;">
+        <button type="submit" class="btn btn-danger btn-sm">Borrar historial del chat</button>
+    </form>
+</div>
+{% endblock %}
