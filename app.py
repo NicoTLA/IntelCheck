@@ -423,7 +423,6 @@ def crear_carpetas():
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 
-```python
 crear_carpetas()
 with app.app_context():
     db.create_all()
