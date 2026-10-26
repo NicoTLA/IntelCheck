@@ -12,13 +12,16 @@ app.config['SECRET_KEY'] = 'intelcheck-nullscape-prototipo-2026'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024  # 8 MB
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Debes iniciar sesión para acceder a esta página.'
 login_manager.login_message_category = 'warning'
+
+# API Key de Claude (opcional, configúrala en las variables de entorno de Render)
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 
 # -------------------- Modelos --------------------
 @login_manager.user_loader
@@ -32,11 +35,10 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), default='user')
+    role = db.Column(db.String(20), default='user')  # creator, administrador, calificador, user
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
 
-    # Relaciones con foreign_keys explícitos para evitar errores
     news = db.relationship('News', backref='author', lazy=True, foreign_keys='News.author_id')
     requests = db.relationship('VerificationRequest', backref='requester', lazy=True, foreign_keys='VerificationRequest.requester_id')
 
@@ -49,11 +51,17 @@ class User(db.Model, UserMixin):
     def is_creator(self):
         return self.role == 'creator'
 
-    def is_calibrador(self):
-        return self.role in ('calibrador', 'creator')
+    def is_administrador(self):
+        return self.role == 'administrador'
+
+    def is_calificador(self):
+        return self.role in ('calificador', 'creator', 'administrador')
 
     def is_user(self):
         return self.role == 'user'
+
+    def puede_gestionar_usuarios(self):
+        return self.role in ('creator', 'administrador')
 
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'
@@ -67,9 +75,11 @@ class News(db.Model):
     image_url = db.Column(db.String(300), nullable=True)
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
     status = db.Column(db.String(20), default='published')
-    veracity_level = db.Column(db.String(20), nullable=True)
+    veracity_level = db.Column(db.String(30), nullable=True)  # falsa, verdadera, parcialmente_correcta, parcialmente_incorrecta
     veracity_note = db.Column(db.Text, nullable=True)
+
     verified_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     verified_at = db.Column(db.DateTime, nullable=True)
 
@@ -87,7 +97,8 @@ class VerificationRequest(db.Model):
     image_url = db.Column(db.String(300), nullable=True)
     requester_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), default='pending')
+
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     reviewed_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     reviewed_at = db.Column(db.DateTime, nullable=True)
     admin_response = db.Column(db.Text, nullable=True)
@@ -121,7 +132,7 @@ def role_required(*roles):
     return decorator
 
 
-# -------------------- Rutas --------------------
+# -------------------- Rutas públicas --------------------
 @app.route('/')
 def index():
     noticias = News.query.filter_by(status='published').order_by(News.created_at.desc()).all()
@@ -158,7 +169,13 @@ def register():
         if User.query.filter_by(username=username).first():
             flash('Ese nombre de usuario ya está tomado.', 'danger')
             return render_template('register.html')
-        role = 'creator' if user_count == 0 else 'user'
+
+        # El primer usuario es creador
+        if user_count == 0:
+            role = 'creator'
+        else:
+            role = 'user'
+
         nuevo = User(username=username, email=email, role=role)
         nuevo.set_password(password)
         db.session.add(nuevo)
@@ -176,13 +193,16 @@ def logout():
     return redirect(url_for('index'))
 
 
+# -------------------- Dashboard --------------------
 @app.route('/dashboard')
 @login_required
 def dashboard():
     if current_user.is_creator():
         return redirect(url_for('admin_panel'))
-    if current_user.is_calibrador():
-        return redirect(url_for('calibrador_panel'))
+    if current_user.is_administrador():
+        return redirect(url_for('admin_panel'))
+    if current_user.is_calificador():
+        return redirect(url_for('calificador_panel'))
     return redirect(url_for('user_panel'))
 
 
@@ -195,25 +215,29 @@ def user_panel():
     return render_template('dashboard.html', solicitudes=mis_solicitudes)
 
 
-@app.route('/calibrador')
+# -------------------- Panel Calificador --------------------
+@app.route('/calificador')
 @login_required
-@role_required('creator', 'calibrador')
-def calibrador_panel():
+@role_required('creator', 'administrador', 'calificador')
+def calificador_panel():
     noticias_no_verificadas = News.query.filter(
         News.status == 'published',
         News.veracity_level.is_(None)
     ).order_by(News.created_at.desc()).all()
+
     solicitudes_pendientes = VerificationRequest.query.filter_by(
         status='pending'
     ).order_by(VerificationRequest.created_at.desc()).all()
-    return render_template('calibrador.html',
+
+    return render_template('calificador.html',
                            noticias=noticias_no_verificadas,
                            solicitudes=solicitudes_pendientes)
 
 
+# -------------------- Panel Administración --------------------
 @app.route('/admin')
 @login_required
-@role_required('creator')
+@role_required('creator', 'administrador')
 def admin_panel():
     usuarios = User.query.order_by(User.created_at.desc()).all()
     solicitudes = VerificationRequest.query.order_by(
@@ -226,9 +250,10 @@ def admin_panel():
                            noticias=noticias)
 
 
+# -------------------- Noticias --------------------
 @app.route('/news/create', methods=['GET', 'POST'])
 @login_required
-@role_required('creator', 'calibrador')
+@role_required('creator', 'administrador', 'calificador')
 def create_news():
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
@@ -236,6 +261,7 @@ def create_news():
         if not title or not content:
             flash('Título y contenido son obligatorios.', 'danger')
             return render_template('create_news.html')
+
         image_url = None
         if 'image' in request.files:
             file = request.files['image']
@@ -244,6 +270,7 @@ def create_news():
                 unique_name = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
                 image_url = f"uploads/{unique_name}"
+
         noticia = News(
             title=title,
             content=content,
@@ -261,28 +288,56 @@ def create_news():
 @app.route('/news/<int:news_id>')
 def news_detail(news_id):
     noticia = News.query.get_or_404(news_id)
-    return render_template('news_detail.html', noticia=noticia)
+    puede_calificar = (
+        current_user.is_authenticated and
+        current_user.is_calificador() and
+        not noticia.veracity_level
+    )
+    return render_template('news_detail.html', noticia=noticia, puede_calificar=puede_calificar)
 
 
-@app.route('/news/<int:news_id>/verify', methods=['POST'])
+@app.route('/news/<int:news_id>/calificar', methods=['GET', 'POST'])
 @login_required
-@role_required('creator', 'calibrador')
-def verify_news(news_id):
+@role_required('creator', 'administrador', 'calificador')
+def calificar_noticia(news_id):
     noticia = News.query.get_or_404(news_id)
-    nivel = request.form.get('veracity_level')
-    nota = request.form.get('veracity_note', '').strip()
-    if nivel not in ('alta', 'media', 'baja', 'falsa'):
-        flash('Nivel de veracidad no válido.', 'danger')
+
+    if noticia.veracity_level:
+        flash('Esta noticia ya tiene una calificación de veracidad.', 'warning')
         return redirect(url_for('news_detail', news_id=news_id))
-    noticia.veracity_level = nivel
-    noticia.veracity_note = nota
-    noticia.verified_by = current_user.id
-    noticia.verified_at = datetime.utcnow()
+
+    if request.method == 'POST':
+        nivel = request.form.get('veracity_level')
+        nota = request.form.get('veracity_note', '').strip()
+
+        niveles_validos = ('falsa', 'verdadera', 'parcialmente_correcta', 'parcialmente_incorrecta')
+        if nivel not in niveles_validos:
+            flash('Nivel de veracidad no válido.', 'danger')
+            return redirect(url_for('calificar_noticia', news_id=news_id))
+
+        noticia.veracity_level = nivel
+        noticia.veracity_note = nota
+        noticia.verified_by = current_user.id
+        noticia.verified_at = datetime.utcnow()
+        db.session.commit()
+        flash(f'Noticia calificada como: {nivel.replace("_", " ").title()}.', 'success')
+        return redirect(url_for('news_detail', news_id=news_id))
+
+    return render_template('calificar_noticia.html', noticia=noticia)
+
+
+@app.route('/news/<int:news_id>/delete', methods=['POST'])
+@login_required
+@role_required('creator', 'administrador')
+def delete_news(news_id):
+    noticia = News.query.get_or_404(news_id)
+    db.session.delete(noticia)
     db.session.commit()
-    flash(f'Noticia calificada como: {nivel}.', 'success')
-    return redirect(url_for('news_detail', news_id=news_id))
+    flash('Noticia eliminada correctamente.', 'success')
+    return redirect(url_for('admin_panel'))
 
 
+# -------------------- Solicitudes de verificación --------------------
 @app.route('/request-verification', methods=['GET', 'POST'])
 @login_required
 def request_verification():
@@ -292,6 +347,7 @@ def request_verification():
         if not title or not content:
             flash('Título y contenido son obligatorios.', 'danger')
             return render_template('verification_request.html')
+
         image_url = None
         if 'image' in request.files:
             file = request.files['image']
@@ -300,6 +356,7 @@ def request_verification():
                 unique_name = f"req_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
                 image_url = f"uploads/{unique_name}"
+
         solicitud = VerificationRequest(
             title=title,
             content=content,
@@ -316,123 +373,67 @@ def request_verification():
 
 @app.route('/request/<int:req_id>/review-page', methods=['GET', 'POST'])
 @login_required
-@role_required('creator', 'calibrador')
+@role_required('creator', 'administrador', 'calificador')
 def request_review_page(req_id):
     solicitud = VerificationRequest.query.get_or_404(req_id)
+
     if request.method == 'POST':
         decision = request.form.get('decision')
         respuesta = request.form.get('admin_response', '').strip()
+
         if decision not in ('approved', 'rejected'):
             flash('Decisión no válida.', 'danger')
-            return redirect(url_for('calibrador_panel'))
+            return redirect(url_for('calificador_panel'))
+
         solicitud.status = decision
         solicitud.reviewed_by = current_user.id
         solicitud.reviewed_at = datetime.utcnow()
         solicitud.admin_response = respuesta
+
+        # Si se aprueba, se publica automáticamente como noticia
+        if decision == 'approved':
+            nueva_noticia = News(
+                title=solicitud.title,
+                content=solicitud.content,
+                image_url=solicitud.image_url,
+                author_id=solicitud.requester_id,
+                status='published'
+            )
+            db.session.add(nueva_noticia)
+            flash('Solicitud aprobada y publicada como noticia.', 'success')
+        else:
+            flash('Solicitud rechazada.', 'info')
+
         db.session.commit()
-        flash(f'Solicitud {decision} correctamente.', 'success')
-        return redirect(url_for('calibrador_panel'))
+        return redirect(url_for('calificador_panel'))
+
     return render_template('request_review.html', solicitud=solicitud)
 
 
+# -------------------- Gestión de usuarios (Admin) --------------------
 @app.route('/admin/user/<int:user_id>/role', methods=['POST'])
 @login_required
-@role_required('creator')
+@role_required('creator', 'administrador')
 def change_user_role(user_id):
     usuario = User.query.get_or_404(user_id)
     nuevo_rol = request.form.get('role')
-    if nuevo_rol not in ('user', 'calibrador', 'creator'):
+
+    roles_validos = ('user', 'calificador', 'administrador', 'creator')
+    if nuevo_rol not in roles_validos:
         flash('Rol no válido.', 'danger')
         return redirect(url_for('admin_panel'))
+
+    # No permitir quitarse el rol de creator a sí mismo
     if usuario.id == current_user.id and nuevo_rol != 'creator':
         flash('No puedes quitarte tu propio rol de creador.', 'danger')
         return redirect(url_for('admin_panel'))
+
     usuario.role = nuevo_rol
     db.session.commit()
     flash(f'Rol de {usuario.username} actualizado a {nuevo_rol}.', 'success')
     return redirect(url_for('admin_panel'))
 
 
-@app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
+@app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
 @login_required
-@role_required('creator')
-def toggle_user(user_id):
-    usuario = User.query.get_or_404(user_id)
-    if usuario.id == current_user.id:
-        flash('No puedes desactivar tu propia cuenta.', 'danger')
-        return redirect(url_for('admin_panel'))
-    usuario.is_active = not usuario.is_active
-    db.session.commit()
-    estado = 'activada' if usuario.is_active else 'desactivada'
-    flash(f'Usuario {usuario.username} {estado}.', 'success')
-    return redirect(url_for('admin_panel'))
-
-
-# -------------------- IA integrada --------------------
-@app.route('/ai-chat', methods=['GET', 'POST'])
-@login_required
-def ai_chat():
-    historial = session.get('ai_historial', [])
-    if request.method == 'POST':
-        mensaje = request.form.get('mensaje', '').strip()
-        if not mensaje:
-            flash('Escribe un mensaje.', 'danger')
-            return redirect(url_for('ai_chat'))
-        respuesta_ia = generar_respuesta_ia(mensaje, current_user)
-        historial.append({'usuario': mensaje, 'ia': respuesta_ia})
-        session['ai_historial'] = historial
-        return redirect(url_for('ai_chat'))
-    return render_template('ai_chat.html', historial=historial)
-
-
-@app.route('/ai-clear', methods=['POST'])
-@login_required
-def ai_clear():
-    session.pop('ai_historial', None)
-    flash('Historial de la IA borrado.', 'info')
-    return redirect(url_for('ai_chat'))
-
-
-def generar_respuesta_ia(mensaje, user):
-    texto = mensaje.lower()
-    if any(palabra in texto for palabra in ['hola', 'buenos', 'buenas', 'hey']):
-        return f"Hola {user.username}. Soy el asistente de IntelCheck. ¿En qué puedo ayudarte hoy?"
-    if 'veracidad' in texto or 'calificar' in texto:
-        return ("Los calificadores evalúan las noticias con niveles: alta, media, baja o falsa. "
-                "Solo los usuarios con rol de calificador o creador pueden asignar una calificación.")
-    if 'solicitud' in texto or 'verificar' in texto:
-        return ("Puedes enviar una solicitud de verificación desde tu panel. "
-                "Adjunta el artículo (y opcionalmente una imagen) y un experto la revisará.")
-    if 'rol' in texto or 'permisos' in texto:
-        return ("Hay tres roles: Creador (acceso total), Calificador (publica y verifica) y Usuario (lee y consulta IA).")
-    if 'noticia' in texto:
-        return ("Las noticias publicadas aparecen en el feed principal. "
-                "Si tienes dudas sobre alguna, usa el chat o solicita su verificación.")
-    return ("Entiendo tu consulta. Como este es un prototipo, mi conocimiento es limitado. "
-            "Si necesitas ayuda específica, contacta al creador de la plataforma o publica tu duda en el feed.")
-
-
-# -------------------- Archivos subidos --------------------
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-
-# -------------------- Inicio --------------------
-def crear_carpetas():
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-
-crear_carpetas()
-with app.app_context():
-    db.create_all()
-    if User.query.count() == 0:
-        print("\n" + "=" * 60)
-        print("  No hay usuarios en la base de datos.")
-        print("  Regístrate en http://127.0.0.1:5000/register")
-        print("  El primer usuario creado será el CREADOR del sistema.")
-        print("=" * 60 + "\n")
-
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+@role_required('
