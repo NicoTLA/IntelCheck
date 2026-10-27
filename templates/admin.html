@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}{{ super() }} - Administración{% endblock %}
+{% block title }}{{ super() }} - Administración{% endblock %}
 
 {% block content %}
-<h2 style="margin-bottom: 2rem;">Panel de Administración (Creador)</h2>
+<h2 style="margin-bottom: 2rem;">Panel de Administración (Creador / Administrador)</h2>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
     <div class="table-card">
@@ -25,7 +25,8 @@
                         <form method="POST" action="{{ url_for('change_user_role', user_id=u.id) }}" style="display: inline;">
                             <select name="role" onchange="this.form.submit()" style="background: var(--darker); color: var(--text); border: 1px solid var(--border); padding: 0.2rem; border-radius: 4px;">
                                 <option value="user" {% if u.role=='user' %}selected{% endif %}>Usuario</option>
-                                <option value="calibrador" {% if u.role=='calibrador' %}selected{% endif %}>Calificador</option>
+                                <option value="calificador" {% if u.role=='calificador' %}selected{% endif %}>Calificador</option>
+                                <option value="administrador" {% if u.role=='administrador' %}selected{% endif %}>Administrador</option>
                                 <option value="creator" {% if u.role=='creator' %}selected{% endif %}>Creador</option>
                             </select>
                         </form>
@@ -36,12 +37,14 @@
                         </span>
                     </td>
                     <td>
-                        {% if u.id != current_user.id %}
-                            <form method="POST" action="{{ url_for('toggle_user', user_id=u.id) }}" style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro?')">
-                                    {% if u.is_active %}Desactivar{% else %}Activar{% endif %}
+                        {% if u.role != 'creator' and u.id != current_user.id %}
+                            <form method="POST" action="{{ url_for('delete_user', user_id=u.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro de eliminar este usuario?')">
+                                    Eliminar
                                 </button>
                             </form>
+                        {% else %}
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">—</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -82,6 +85,7 @@
                 <th>Autor</th>
                 <th>Veracidad</th>
                 <th>Estado</th>
+                <th>Acciones</th>
             </tr>
         </thead>
         <tbody>
@@ -89,8 +93,19 @@
             <tr>
                 <td>{{ n.title }}</td>
                 <td>{{ n.author.username }}</td>
-                <td>{{ n.veracity_level|upper if n.veracity_level else 'Pendiente' }}</td>
+                <td>{{ n.veracity_level.replace('_', ' ')|title if n.veracity_level else 'Pendiente' }}</td>
                 <td><span class="status-badge status-{{ n.status }}">{{ n.status|upper }}</span></td>
+                <td>
+                    {% if current_user.puede_gestionar_usuarios() %}
+                        <form method="POST" action="{{ url_for('delete_news', news_id=n.id) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar esta noticia?')">
+                                Eliminar
+                            </button>
+                        </form>
+                    {% else %}
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">—</span>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>

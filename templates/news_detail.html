@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ super() }} - {{ noticia.title }}{% endblock %}
+{% block title }}{{ super() }} - {{ noticia.title }}{% endblock %}
 
 {% block content %}
 <div class="news-detail">
@@ -15,7 +15,7 @@
         <span><strong>Fecha:</strong> {{ noticia.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
         {% if noticia.veracity_level %}
             <span class="veracidad-badge veracidad-{{ noticia.veracity_level }}">
-                Veracidad: {{ noticia.veracity_level|upper }}
+                Veracidad: {{ noticia.veracity_level.replace('_', ' ')|title }}
             </span>
         {% endif %}
     </div>
@@ -28,25 +28,8 @@
         </div>
     {% endif %}
 
-    {% if current_user.is_authenticated and current_user.is_calibrador() and not noticia.veracity_level %}
-        <form method="POST" action="{{ url_for('verify_news', news_id=noticia.id) }}">
-            <h3 style="margin-bottom: 1rem;">Calificar veracidad</h3>
-            <div class="form-group">
-                <label>Nivel de veracidad</label>
-                <select name="veracity_level" required>
-                    <option value="">Seleccionar...</option>
-                    <option value="alta">Alta</option>
-                    <option value="media">Media</option>
-                    <option value="baja">Baja</option>
-                    <option value="falsa">Falsa</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Nota / justificación (opcional)</label>
-                <textarea name="veracity_note" rows="3"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary">Guardar calificación</button>
-        </form>
+    {% if puede_calificar %}
+        <a href="{{ url_for('calificar_noticia', news_id=noticia.id) }}" class="btn btn-primary" style="margin-top: 1rem;">Calificar noticia</a>
     {% endif %}
 
     <a href="{{ url_for('index') }}" style="color: var(--primary);">← Volver al inicio</a>

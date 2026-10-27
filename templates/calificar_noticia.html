@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title }}{{ super() }} - Calificar noticia{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <h2 style="margin-bottom: 1rem;">Calificar noticia: {{ noticia.title }}</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+        Por <strong>{{ noticia.author.username }}</strong> ·
+        {{ noticia.created_at.strftime('%d/%m/%Y %H:%M') }}
+    </p>
+
+    <div style="background: #1e293b; border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; white-space: pre-wrap;">
+        {{ noticia.content }}
+    </div>
+
+    {% if noticia.image_url %}
+        <img src="{{ url_for('uploaded_file', filename=noticia.image_url) }}" alt="Imagen noticia" style="max-width: 100%; border-radius: 8px; margin-bottom: 1.5rem;">
+    {% endif %}
+
+    <form method="POST">
+        <div class="form-group">
+            <label for="veracity_level">Nivel de veracidad</label>
+            <select name="veracity_level" id="veracity_level" required>
+                <option value="">Seleccionar...</option>
+                <option value="falsa">Falsa</option>
+                <option value="verdadera">Verdadera</option>
+                <option value="parcialmente_correcta">Parcialmente correcta</option>
+                <option value="parcialmente_incorrecta">Parcialmente incorrecta</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="veracity_note">Nota / justificación (opcional)</label>
+            <textarea name="veracity_note" id="veracity_note" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Guardar calificación</button>
+    </form>
+
+    <p style="margin-top: 1.5rem; text-align: center;">
+        <a href="{{ url_for('news_detail', news_id=noticia.id) }}" class="btn btn-outline">Volver a la noticia</a>
+    </p>
+</div>
+{% endblock %}

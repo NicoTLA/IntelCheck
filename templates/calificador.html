@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ super() }} - Calibrador{% endblock %}
+{% block title }}{{ super() }} - Calificador{% endblock %}
 
 {% block content %}
 <h2 style="margin-bottom: 2rem;">Panel de Calificador</h2>
@@ -23,7 +23,7 @@
                         <td>{{ n.title }}</td>
                         <td>{{ n.author.username }}</td>
                         <td>
-                            <a href="{{ url_for('news_detail', news_id=n.id) }}" class="btn btn-sm btn-primary">Calificar</a>
+                            <a href="{{ url_for('news_detail', news_id=n.id) }}" class="btn btn-sm btn-primary">Ver detalles</a>
                         </td>
                     </tr>
                     {% endfor %}

@@ -12,16 +12,15 @@
     <div class="logo">
         IntelCheck <span>(Nullscape)</span>
     </div>
-
-    <div class="nav-links">
+        <div class="nav-links">
         {% if current_user.is_authenticated %}
             <a href="{{ url_for('index') }}">Inicio</a>
             <a href="{{ url_for('ai_chat') }}">Asistente IA</a>
-            {% if current_user.is_calibrador() %}
+            {% if current_user.is_calificador() %}
                 <a href="{{ url_for('create_news') }}">Publicar Noticia</a>
-                <a href="{{ url_for('calibrador_panel') }}">Calibrador</a>
+                <a href="{{ url_for('calificador_panel') }}">Calificador</a>
             {% endif %}
-            {% if current_user.is_creator() %}
+            {% if current_user.puede_gestionar_usuarios() %}
                 <a href="{{ url_for('admin_panel') }}">Administración</a>
             {% endif %}
             <span class="user-badge">{{ current_user.username }} · {{ current_user.role }}</span>
