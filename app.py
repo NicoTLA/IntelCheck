@@ -20,7 +20,7 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Debes iniciar sesión para acceder a esta página.'
 login_manager.login_message_category = 'warning'
 
-# API Key de Claude (opcional, configúrala en las variables de entorno de Render)
+# API Key de Claude (configúrala en Render como variable de entorno ANTHROPIC_API_KEY)
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 
 # -------------------- Modelos --------------------
@@ -77,7 +77,7 @@ class News(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     status = db.Column(db.String(20), default='published')
-    veracity_level = db.Column(db.String(30), nullable=True)  # falsa, verdadera, parcialmente_correcta, parcialmente_incorrecta
+    veracity_level = db.Column(db.String(30), nullable=True)
     veracity_note = db.Column(db.Text, nullable=True)
 
     verified_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -98,7 +98,7 @@ class VerificationRequest(db.Model):
     requester_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    status = db.Column(db.String(20), default='pending')
     reviewed_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     reviewed_at = db.Column(db.DateTime, nullable=True)
     admin_response = db.Column(db.Text, nullable=True)
@@ -170,7 +170,6 @@ def register():
             flash('Ese nombre de usuario ya está tomado.', 'danger')
             return render_template('register.html')
 
-        # El primer usuario es creador
         if user_count == 0:
             role = 'creator'
         else:
@@ -390,7 +389,6 @@ def request_review_page(req_id):
         solicitud.reviewed_at = datetime.utcnow()
         solicitud.admin_response = respuesta
 
-        # Si se aprueba, se publica automáticamente como noticia
         if decision == 'approved':
             nueva_noticia = News(
                 title=solicitud.title,
@@ -423,7 +421,6 @@ def change_user_role(user_id):
         flash('Rol no válido.', 'danger')
         return redirect(url_for('admin_panel'))
 
-    # No permitir quitarse el rol de creator a sí mismo
     if usuario.id == current_user.id and nuevo_rol != 'creator':
         flash('No puedes quitarte tu propio rol de creador.', 'danger')
         return redirect(url_for('admin_panel'))
@@ -436,4 +433,128 @@ def change_user_role(user_id):
 
 @app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
 @login_required
-@role_required('creator', 'administrador', 'calificador')
+@role_required('creator', 'administrador')
+def delete_user(user_id):
+    usuario = User.query.get_or_404(user_id)
+
+    if usuario.role == 'creator':
+        flash('No se puede eliminar al creador del sistema.', 'danger')
+        return redirect(url_for('admin_panel'))
+
+    if usuario.id == current_user.id:
+        flash('No puedes eliminar tu propia cuenta.', 'danger')
+        return redirect(url_for('admin_panel'))
+
+    db.session.delete(usuario)
+    db.session.commit()
+    flash(f'Usuario {usuario.username} eliminado.', 'success')
+    return redirect(url_for('admin_panel'))
+
+
+@app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
+@login_required
+@role_required('creator', 'administrador')
+def toggle_user(user_id):
+    usuario = User.query.get_or_404(user_id)
+    if usuario.role == 'creator':
+        flash('No se puede desactivar al creador del sistema.', 'danger')
+        return redirect(url_for('admin_panel'))
+    if usuario.id == current_user.id:
+        flash('No puedes desactivar tu propia cuenta.', 'danger')
+        return redirect(url_for('admin_panel'))
+    usuario.is_active = not usuario.is_active
+    db.session.commit()
+    estado = 'activada' if usuario.is_active else 'desactivada'
+    flash(f'Usuario {usuario.username} {estado}.', 'success')
+    return redirect(url_for('admin_panel'))
+
+
+# -------------------- IA integrada --------------------
+@app.route('/ai-chat', methods=['GET', 'POST'])
+@login_required
+def ai_chat():
+    historial = session.get('ai_historial', [])
+
+    if request.method == 'POST':
+        mensaje = request.form.get('mensaje', '').strip()
+        if not mensaje:
+            flash('Escribe un mensaje.', 'danger')
+            return redirect(url_for('ai_chat'))
+
+        respuesta_ia = generar_respuesta_ia(mensaje, current_user)
+        historial.append({'usuario': mensaje, 'ia': respuesta_ia})
+        session['ai_historial'] = historial
+        return redirect(url_for('ai_chat'))
+
+    return render_template('ai_chat.html', historial=historial)
+
+
+@app.route('/ai-clear', methods=['POST'])
+@login_required
+def ai_clear():
+    session.pop('ai_historial', None)
+    flash('Historial de la IA borrado.', 'info')
+    return redirect(url_for('ai_chat'))
+
+
+def generar_respuesta_ia(mensaje, user):
+    texto = mensaje.lower()
+
+    if any(palabra in texto for palabra in ['hola', 'buenos', 'buenas', 'hey']):
+        return f"Hola {user.username}. Soy el asistente de IntelCheck. ¿En qué puedo ayudarte hoy?"
+    if 'veracidad' in texto or 'calificar' in texto:
+        return ("Los calificadores evalúan las noticias con niveles: Falsa, Verdadera, Parcialmente correcta o Parcialmente incorrecta. "
+                "Solo usuarios con rol de Calificador, Administrador o Creador pueden asignar una calificación.")
+    if 'solicitud' in texto or 'verificar' in texto:
+        return ("Puedes enviar una solicitud de verificación desde tu panel. "
+                "Adjunta el artículo (y opcionalmente una imagen) y un experto la revisará.")
+    if 'rol' in texto or 'permisos' in texto:
+        return ("Hay cuatro roles: Creador (acceso total), Administrador (gestiona usuarios y noticias), "
+                "Calificador (publica y verifica noticias) y Usuario (lee y consulta IA).")
+    if 'noticia' in texto:
+        return ("Las noticias publicadas aparecen en el feed principal. "
+                "Si tienes dudas sobre alguna, usa el chat o solicita su verificación.")
+
+    if ANTHROPIC_API_KEY:
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+            response = client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=500,
+                system="Eres el asistente de IntelCheck (Nullscape), una plataforma de verificación noticiosa. Responde en español de forma clara, objetiva y útil. No inventes información.",
+                messages=[{"role": "user", "content": mensaje}]
+            )
+            return response.content[0].text
+        except Exception as e:
+            return f"No pude conectar con Claude en este momento ({str(e)}). Inténtalo de nuevo más tarde."
+
+    return ("Entiendo tu consulta. Como este es un prototipo, mi conocimiento es limitado. "
+            "Configura tu API Key de Claude en las variables de entorno de Render para obtener respuestas más avanzadas. "
+            "Mientras tanto, contacta al creador de la plataforma si necesitas ayuda específica.")
+
+
+# -------------------- Archivos subidos --------------------
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+
+# -------------------- Inicio --------------------
+def crear_carpetas():
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+
+crear_carpetas()
+with app.app_context():
+    db.create_all()
+    if User.query.count() == 0:
+        print("\n" + "=" * 60)
+        print("  No hay usuarios en la base de datos.")
+        print("  Regístrate en http://127.0.0.1:5000/register")
+        print("  El primer usuario creado será el CREADOR del sistema.")
+        print("=" * 60 + "\n")
+
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
