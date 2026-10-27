@@ -37,25 +37,39 @@
     </div>
 
     <div class="table-card">
-        <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text);">Solicitudes de usuarios pendientes</h3>
+        <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text);">Solicitudes pendientes o rechazadas</h3>
         {% if solicitudes %}
             <table style="font-size: 0.85rem;">
                 <thead>
                     <tr>
                         <th>Título</th>
                         <th>Solicitante</th>
+                        <th>Estado</th>
                         <th>Fecha</th>
                         <th>Acción</th>
+                        <th>Eliminar</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for s in solicitudes %}
+                    {% for s in solicitudes if s.status in ('pending', 'rejected') %}
                     <tr>
                         <td>{{ s.title }}</td>
                         <td>{{ s.requester.username }}</td>
+                        <td><span class="status-badge status-{{ s.status }}">{{ s.status|upper }}</span></td>
                         <td>{{ s.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                         <td>
-                            <a href="{{ url_for('request_review_page', req_id=s.id) }}" class="btn btn-sm btn-outline">Revisar y decidir</a>
+                            {% if s.status == 'pending' %}
+                                <a href="{{ url_for('request_review_page', req_id=s.id) }}" class="btn btn-sm btn-outline">Revisar y decidir</a>
+                            {% else %}
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">Rechazada</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ url_for('delete_request', req_id=s.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar esta solicitud?')">
+                                    Eliminar
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}
@@ -63,7 +77,7 @@
             </table>
         {% else %}
             <div class="empty-state">
-                <p>No hay solicitudes pendientes.</p>
+                <p>No hay solicitudes pendientes o rechazadas.</p>
             </div>
         {% endif %}
     </div>

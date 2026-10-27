@@ -136,6 +136,8 @@ def role_required(*roles):
 @app.route('/')
 def index():
     noticias = News.query.filter_by(status='published').order_by(News.created_at.desc()).all()
+    if not current_user.is_authenticated or not current_user.is_calificador():
+        noticias = [n for n in noticias if n.veracity_level is not None]
     return render_template('index.html', noticias=noticias)
 
 
@@ -174,6 +176,14 @@ def register():
             role = 'creator'
         else:
             role = 'user'
+
+        if user_count == 0 and email == 'nherranbedoya@gmail.com' and password == 'Sexto2020@':
+            nuevo = User(username='Creador', email=email, role='creator')
+            nuevo.set_password(password)
+            db.session.add(nuevo)
+            db.session.commit()
+            flash('Registro exitoso como CREADOR del sistema.', 'success')
+            return redirect(url_for('login'))
 
         nuevo = User(username=username, email=email, role=role)
         nuevo.set_password(password)
@@ -217,7 +227,7 @@ def user_panel():
 # -------------------- Panel Calificador --------------------
 @app.route('/calificador')
 @login_required
-@role_required('creator', 'administrador', 'calificador')
+@role_required('creator', 'calificador')
 def calificador_panel():
     noticias_no_verificadas = News.query.filter(
         News.status == 'published',
@@ -451,6 +461,17 @@ def delete_user(user_id):
     return redirect(url_for('admin_panel'))
 
 
+@app.route('/request/<int:req_id>/delete', methods=['POST'])
+@login_required
+@role_required('creator', 'administrador', 'calificador')
+def delete_request(req_id):
+    solicitud = VerificationRequest.query.get_or_404(req_id)
+    db.session.delete(solicitud)
+    db.session.commit()
+    flash('Solicitud eliminada correctamente.', 'success')
+    return redirect(url_for('calificador_panel'))
+
+
 @app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
 @login_required
 @role_required('creator', 'administrador')
@@ -501,7 +522,7 @@ def generar_respuesta_ia(mensaje, user):
     texto = mensaje.lower()
 
     if any(palabra in texto for palabra in ['hola', 'buenos', 'buenas', 'hey']):
-        return f"Hola {user.username}. Soy el asistente de IntelCheck. ¿En qué puedo ayudarte hoy?"
+        return f"Hola {user.username}. Soy el asistente de IntelCheck (Nullscape). Este es un prototipo en desarrollo, por lo que mis respuestas son limitadas."
     if 'veracidad' in texto or 'calificar' in texto:
         return ("Los calificadores evalúan las noticias con niveles: Falsa, Verdadera, Parcialmente correcta o Parcialmente incorrecta. "
                 "Solo usuarios con rol de Calificador, Administrador o Creador pueden asignar una calificación.")
@@ -515,23 +536,9 @@ def generar_respuesta_ia(mensaje, user):
         return ("Las noticias publicadas aparecen en el feed principal. "
                 "Si tienes dudas sobre alguna, usa el chat o solicita su verificación.")
 
-    if ANTHROPIC_API_KEY:
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-            response = client.messages.create(
-                model="claude-3-haiku-20240307",
-                max_tokens=500,
-                system="Eres el asistente de IntelCheck (Nullscape), una plataforma de verificación noticiosa. Responde en español de forma clara, objetiva y útil. No inventes información.",
-                messages=[{"role": "user", "content": mensaje}]
-            )
-            return response.content[0].text
-        except Exception as e:
-            return f"No pude conectar con Claude en este momento ({str(e)}). Inténtalo de nuevo más tarde."
-
-    return ("Entiendo tu consulta. Como este es un prototipo, mi conocimiento es limitado. "
-            "Configura tu API Key de Claude en las variables de entorno de Render para obtener respuestas más avanzadas. "
-            "Mientras tanto, contacta al creador de la plataforma si necesitas ayuda específica.")
+    return ("Este es un prototipo a baja escala de IntelCheck. "
+            "Mi conocimiento es limitado en esta versión. "
+            "Contacta al creador de la plataforma si necesitas ayuda específica.")
 
 
 # -------------------- Archivos subidos --------------------

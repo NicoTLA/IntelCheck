@@ -76,39 +76,90 @@
     </div>
 </div>
 
-<div class="table-card">
-    <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text);">Todas las noticias</h3>
-    <table style="font-size: 0.85rem;">
-        <thead>
-            <tr>
-                <th>Título</th>
-                <th>Autor</th>
-                <th>Veracidad</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for n in noticias %}
-            <tr>
-                <td>{{ n.title }}</td>
-                <td>{{ n.author.username }}</td>
-                <td>{{ n.veracity_level.replace('_', ' ')|title if n.veracity_level else 'Pendiente' }}</td>
-                <td><span class="status-badge status-{{ n.status }}">{{ n.status|upper }}</span></td>
-                <td>
-                    {% if current_user.puede_gestionar_usuarios() %}
-                        <form method="POST" action="{{ url_for('delete_news', news_id=n.id) }}" style="display: inline;">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar esta noticia?')">
-                                Eliminar
-                            </button>
-                        </form>
-                    {% else %}
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">—</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem;">
+    <div class="table-card">
+        <h4 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text); background: #450a0a;">Falsa</h4>
+        <table style="font-size: 0.8rem;">
+            <thead>
+                <tr><th>Título</th><th>Autor</th></tr>
+            </thead>
+            <tbody>
+                {% for n in noticias if n.veracity_level == 'falsa' %}
+                <tr>
+                    <td>{{ n.title }}</td>
+                    <td>{{ n.author.username }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card">
+        <h4 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text); background: #064e3b;">Verdadera</h4>
+        <table style="font-size: 0.8rem;">
+            <thead>
+                <tr><th>Título</th><th>Autor</th></tr>
+            </thead>
+            <tbody>
+                {% for n in noticias if n.veracity_level == 'verdadera' %}
+                <tr>
+                    <td>{{ n.title }}</td>
+                    <td>{{ n.author.username }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card">
+        <h4 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text); background: #451a03;">Parcialmente correcta</h4>
+        <table style="font-size: 0.8rem;">
+            <thead>
+                <tr><th>Título</th><th>Autor</th></tr>
+            </thead>
+            <tbody>
+                {% for n in noticias if n.veracity_level == 'parcialmente_correcta' %}
+                <tr>
+                    <td>{{ n.title }}</td>
+                    <td>{{ n.author.username }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card">
+        <h4 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text); background: #7c3aed;">Parcialmente incorrecta</h4>
+        <table style="font-size: 0.8rem;">
+            <thead>
+                <tr><th>Título</th><th>Autor</th></tr>
+            </thead>
+            <tbody>
+                {% for n in noticias if n.veracity_level == 'parcialmente_incorrecta' %}
+                <tr>
+                    <td>{{ n.title }}</td>
+                    <td>{{ n.author.username }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-card">
+        <h4 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text); background: var(--border);">Pendiente</h4>
+        <table style="font-size: 0.8rem;">
+            <thead>
+                <tr><th>Título</th><th>Autor</th></tr>
+            </thead>
+            <tbody>
+                {% for n in noticias if n.veracity_level is none %}
+                <tr>
+                    <td>{{ n.title }}</td>
+                    <td>{{ n.author.username }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
