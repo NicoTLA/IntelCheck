@@ -436,4 +436,4 @@ def change_user_role(user_id):
 
 @app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
 @login_required
-@role_required('
+@role_required('creator', 'administrador', 'calificador')
