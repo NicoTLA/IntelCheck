@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}}{{ super() }} - Calificador{% endblock %}
+{% block title %}{{ super() }} - Calificador{% endblock %}
 
 {% block content %}
 <h2 style="margin-bottom: 2rem;">Panel de Calificador</h2>
 
 <div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
     <div class="table-card">
-        <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text;">Noticias por verificar</h3>
+        <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text);">Noticias por verificar</h3>
         {% if noticias %}
             <table style="font-size: 0.85rem;">
                 <thead>
@@ -37,7 +37,7 @@
     </div>
 
     <div class="table-card">
-        <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text;">Solicitudes de usuarios pendientes</h3>
+        <h3 style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); color: var(--text);">Solicitudes de usuarios pendientes</h3>
         {% if solicitudes %}
             <table style="font-size: 0.85rem;">
                 <thead>
