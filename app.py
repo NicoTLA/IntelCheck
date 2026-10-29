@@ -522,7 +522,7 @@ def generar_respuesta_ia(mensaje, user):
     texto = mensaje.lower()
 
     if any(palabra in texto for palabra in ['hola', 'buenos', 'buenas', 'hey']):
-        return f"Hola {user.username}. Soy el asistente de IntelCheck (Nullscape). Este es un prototipo en desarrollo, por lo que mis respuestas son limitadas."
+        return f"Hola {user.username}. Soy el asistente de IntelCheck. Este es un prototipo en desarrollo, por lo que mis respuestas son limitadas."
     if 'veracidad' in texto or 'calificar' in texto:
         return ("Los calificadores evalúan las noticias con niveles: Falsa, Verdadera, Parcialmente correcta o Parcialmente incorrecta. "
                 "Solo usuarios con rol de Calificador, Administrador o Creador pueden asignar una calificación.")

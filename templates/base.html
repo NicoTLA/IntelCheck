@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}IntelCheck (Nullscape){% endblock %}</title>
+    <title>{% block title %}IntelCheck{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 
 <nav class="navbar">
     <div class="logo">
-        IntelCheck <span>(Nullscape)</span>
+        IntelCheck
     </div>
         <div class="nav-links">
         {% if current_user.is_authenticated %}
@@ -48,7 +48,7 @@
 </div>
 
 <footer style="text-align:center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--border);">
-    IntelCheck (Nullscape) — Prototipo a baja escala de IntelCheck &nbsp;|&nbsp; Rol actual: 
+    IntelCheck — Prototipo a baja escala &nbsp;|&nbsp; Rol actual: 
     {% if current_user.is_authenticated %}{{ current_user.role }}{% else %}Invitado{% endif %}
 </footer>
 
