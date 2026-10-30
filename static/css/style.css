@@ -304,8 +304,8 @@ a:hover {
 .veracidad-baja { background: #450a0a; color: #fecaca; }
 .veracidad-falsa { background: #450a0a; color: #fecaca; border: 1px solid var(--danger); }
 .veracidad-verdadera { background: #064e3b; color: #d1fae5; }
-.veracidad-parcialmente_correcta { background: #ddff00; color: #fef3c7; }
-.veracidad-parcialmente_incorrecta { background: #ff8c00; color: #fef3c7; }
+.veracidad-parcialmente_correcta { background: #ddff00; color: #000000; }
+.veracidad-parcialmente_incorrecta { background: #ff8c00; color: #000000; }
 .veracidad-pendiente { background: var(--border); color: var(--text-muted); }
 
 /* ===== Formularios ===== */
