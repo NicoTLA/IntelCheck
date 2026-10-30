@@ -306,7 +306,7 @@ a:hover {
 .veracidad-verdadera { background: #064e3b; color: #d1fae5; }
 .veracidad-parcialmente_correcta { background: #ddff00; color: #000000; }
 .veracidad-parcialmente_incorrecta { background: #ff8c00; color: #000000; }
-.veracidad-pendiente { background: var(--border); color: var(--text-muted); }
+.veracidad-pendiente { background: var(--border); color: #000000; }
 
 /* ===== Formularios ===== */
 .form-card {
